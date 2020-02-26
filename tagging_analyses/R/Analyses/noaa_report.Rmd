@@ -1,0 +1,229 @@
+---
+title: "NOAA Tagging Final Report"
+author: "Adam A Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    mathjax: null
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+#Packages
+library(tidyverse)
+library(here)
+library(stargazer)
+library(sf)
+library(knitr)
+library(rnaturalearth)
+library(gridExtra)
+library(circular)
+library(magrittr)
+
+#Path to dropbox data
+db_path <- "/Users/akemberling/Dropbox/csap_studies/tagging_analyses/Data"
+
+####  Data  ####
+#These files have had the regions we are interested in added and have had bad tags removed
+# See the tagging_region_assignment.R script for details
+tagging <- read_csv(str_c(db_path, "/final_report_datasets", "/tags_clean_final.csv"), 
+                    col_types = cols()) %>% rename_all(tolower)
+both <- read_csv(str_c(db_path, "/final_report_datasets", "/tags_recaps_clean_final.csv"), 
+                   col_types = cols()) %>% rename_all(tolower)
+
+# Spatial Polygons
+usa_poly <- ne_states("united states of america") %>% st_as_sf() %>% filter(region == "South")
+mexico_poly <- ne_states("mexico") %>% st_as_sf()
+```
+
+# Gulf Scale
+
+
+##  Gulf-Wide Tagging Effort
+
+```{r totals tagged}
+tagging <- tagging %>% 
+  mutate(
+    tag_state = factor(tag_state, 
+                       levels = c("Texas", "Louisiana", "Mississippi", "Alabama", "Florida")),
+    tag_state = fct_explicit_na(tag_state, na_level = "Deep Water Event"))
+
+tagging %>% 
+  group_by(tag_state, tag_region) %>% 
+  summarise(`Number Tagged` = n()) %>% 
+  kable(caption = "Summary of Overall Tagging Effort")
+
+
+```
+
+
+## Gulf-Wide Travel Summary
+
+
+```{r recaptures summary}
+both <- both %>% 
+  mutate(tag_state = factor(tag_state, 
+                            levels = c("Texas", "Louisiana", 
+                                       "Mississippi", "Alabama", "Florida")))
+
+both %>% 
+  group_by(tag_state, tag_region) %>% 
+  summarise(`Number Recaptured` = n(),
+            `Average Time at Liberty (days)` = mean(time_at_large, na.rm = T),
+            `Average Distance Travelled (km by water)` = mean(lc_distance / 1000),
+            `Mean Travel Rate (km/day over water)` = mean((lc_distance/1000) / time_at_large)) %>% 
+  ungroup() %>% rename(`Tagging State` = tag_state,
+                       `Tagging Region` = tag_region) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
+  kable(caption = "Summary of Time at Liberty and Travel Rate for Recaptures by their Release State and Sub-region")
+```
+
+
+##  Gulf-Wide Tagging State and Recapture States/Regions
+
+
+```{r}
+both %>% 
+  group_by(tag_state, tag_region) %>% 
+  count(recap_state, recapture_region) %>%  
+  rename("Tagging State" = tag_state,
+         "Recapture State" = recap_state,
+         "Recapture Region" = recapture_region,
+         "Number of Crabs" = n) %>% 
+  kable(caption = "Start and End States/Regions for Recaptured Crabs")
+```
+
+---  
+---   
+
+# State Scale
+
+##   State-Scale Travel Summary
+
+```{r}
+both %>% 
+  group_by(tag_state) %>% 
+  summarise(`Number Recaptured` = n(),
+            `Average Time at Liberty (days)` = mean(time_at_large, na.rm = T),
+            `Average Distance Travelled (km by water)` = mean(lc_distance / 1000),
+            `Mean Travel Rate (km/day over water)` = mean((lc_distance/1000) / time_at_large)) %>% 
+  ungroup() %>% rename(`Tagging State` = tag_state) %>% 
+  mutate_if(is.numeric, round, 2) %>%  
+  kable(caption = "Summary of Time at Liberty and Travel Rate for Recaptures by their Release State")
+```
+
+##   State-Scale Tagging State and Recapture State
+
+```{r}
+both %>% 
+  group_by(tag_state) %>% 
+  count(recap_state) %>%  
+  rename("Tagging State" = tag_state,
+         "Recapture State" = recap_state,
+         "Number of Crabs" = n) %>% 
+  kable(caption = "Start and End States for Recaptured Crabs")
+```
+
+---
+---
+
+# Basin Scale
+
+##   Basin-Scale Travel Summary
+
+o   Total numbers tagged when (maybe a figure with calendar month and numbers tagged
+
+o   Maps of tagging and recaptures
+
+```{r}
+both %>% 
+  group_by(tag_region) %>% 
+  summarise(`Number Recaptured` = n(),
+            `Average Time at Liberty (days)` = mean(time_at_large, na.rm = T),
+            `Average Distance Travelled (km by water)` = mean(lc_distance / 1000),
+            `Mean Travel Rate (km/day over water)` = mean((lc_distance/1000) / time_at_large)) %>% 
+  ungroup() %>% rename(`Tagging Region` = tag_region) %>% 
+  mutate_if(is.numeric, round, 2) %>%  
+  kable(caption = "Summary of Time at Liberty and Travel Rate for Recaptures by their Release Region")
+```
+
+
+##   Directions travelled (exclude crabs that travelled < 5km for this)
+
+o   Rao’s test for each
+
+```{r, message=FALSE, warning=FALSE}
+hist(both$bearing)
+hist(both$windrose_bearing)
+
+#Circle Plots
+region_circ <- both %>% 
+  #Filter minimum distances out
+  filter(lc_distance >= 5000) %>% 
+  #Split by Region
+  split(.$tag_region) %>% 
+  #Pull the bearing info and make circular objects
+  map(function(x) {
+    bearings <- select(x, windrose_bearing)
+    as.circular(bearings, 
+                units = "degrees",
+                zero = pi/2,
+                rotation = "clock")
+    
+  })
+
+
+#Make Plots so you can check orientation
+region_circ %>% imap(function(.x, .y) {circular::plot.circular(.x, main = paste(.y))})
+
+
+#Kernel Plots
+
+
+region_circ %>% imap(function(.x, .y) {
+  res_25 <- density.circular(.x, bw = 25)
+  plot(res_25, points.plot = TRUE,
+       shrink = 1.3,
+       main = paste(.y), 
+       #main = str_c(.y, "\nKernel Density Plot"), 
+       ylab = "")
+  
+  })
+
+
+
+#Rao's Test
+#?circular::rao.test()
+
+```
+
+
+o   Crabs recaptured within home estuary
+
+o   Crabs captured somewhere else
+
+##  Travel rates (Maybe exclude crabs that have long times at liberty? Start with 1 month)
+
+o   What patterns stand out: mean and variance etc. by season
+
+
+---
+---
+ 
+# Crabs outside of Estuaries
+
+##   Map of only Gulf Crabs
+
+
+
+
+##   Any recaptures
+
+
+
