@@ -3,20 +3,25 @@
 
 #Packages
 library(tidyverse)
-#library(here)
 
 
-#Data import, data uploaded from GSMFC March 23, 2019
-BGSREC <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/BGSREC.csv", 
+#Data import, data updated March 31st 2020 from GSMFC, downloaded again April, 2020
+BGSREC <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_raw/BGSREC.csv", 
+                   col_types = cols(), 
+                   guess_max = 1e5)
+
+ENVREC <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_raw/ENVREC.csv", 
                    col_types = cols(), guess_max = 1e5)
-ENVREC <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/ENVREC.csv", 
-                   col_types = cols(), guess_max = 1e5)
-CRUISES <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/CRUISES.csv", 
+
+CRUISES <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_raw/CRUISES.csv", 
                     col_types = cols(), guess_max = 1e5)
-STAREC <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/STAREC.csv", 
+
+STAREC <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_raw/STAREC.csv", 
                    col_types = cols(), guess_max = 1e5)
-INVREC <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/INVREC.csv", 
+
+INVREC <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_raw/INVREC.csv", 
                    col_types = cols(), guess_max = 1e5)
+
 # GLFREC <- read_csv("/Users/adamkemberling/Dropbox (The Craboratory)/SEAMAP_2019/data/GSMFC_raw/GLFREC.csv", 
                    # col_types = cols(), guess_max = 1e5)  #GLFREC has SEX of catch
 
@@ -92,8 +97,11 @@ seamap_merge <-  left_join(ENVREC, BGSREC, by = "STATIONID")
 # 
 # ####  End 4/11/2019  spread instead of getting one row per station
 
+
+
 ######  getting one row for each station  #####
 ######  selecting the sapidus rows for stations that have a catch  #####
+
 
 # 1. make a dataframe of just unique station numbers and whatever the blue crab catch was
 catch.fix <- unique(data.frame("STATIONID" = seamap_merge$STATIONID, "COUNT" = seamap_merge$SAP_CNT))
@@ -155,4 +163,7 @@ tail(all.info)
 # write_csv(seamap_merge, here("data_processed/gsmfc_processed", "seamap_catchdata.csv"))
 # write_csv(all.info, here("data_processed/gsmfc_processed", "seamap_sapidus_consolidation_2019.csv"))
 
-#push test
+#New (2020) dropbox directory
+write_csv(trawl.info,'~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_trawlinfo.csv' )
+write_csv(seamap_merge, '~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_catchdata.csv')
+write_csv(all.info, '~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_sapidus_consolidation_2019.csv')

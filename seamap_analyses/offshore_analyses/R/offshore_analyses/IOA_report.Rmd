@@ -60,7 +60,7 @@ There was an initial concern with abnormally high catch values being potential m
 # Read in data
 #seamap <- read_csv(here("data_processed/gsmfc_processed", "seamap_cpue_2019.csv"),
 #seamap <- read_csv(here("data/offshore", "seamap_cpue_2019.csv"),
-seamap <- read_csv("~/Dropbox/SEAMAP_2019/data/offshore/seamap_cpue_2019.csv",
+seamap <- read_csv("~/Dropbox/csap_studies/seamap_analyses/data/offshore/seamap_cpue_2019.csv",
                    guess_max = 1e6, 
                    col_types = cols())
 
@@ -245,7 +245,7 @@ year_plot_1 + year_plot_2
 ```{r}
 #Assign Stat Zone from NMFS grid
 #szones <- read_sf(here("GIS_objects",  "NMFS_Fishing_Grids_GOM_2013", "NMFS_Fishing_Grids_GOM_2013.shp"), crs = 4326)
-szones <- read_sf("~/Dropbox/SEAMAP_2019/data/gis_files/NMFS_Fishing_Grids_GOM_2013.shp", crs = 4326)
+szones <- read_sf("~/Dropbox/csap_studies/seamap_analyses/data/gis_files/NMFS_Fishing_Grids_GOM_2013.shp", crs = 4326)
 
 # Add a better StatZone ID by spatial overlap
 seamap <- seamap %>% 
@@ -370,11 +370,6 @@ seamap <- seamap %>%
     region = factor(region, levels = c("Texas", "Louisiana", "MS Bight", "Florida"))
     )
 
-#Output seamap analysis file
-write_csv(seamap, 
-          "~/Dropbox/SEAMAP_2019/data/offshore/seamap_cpue_2019_analysis.csv", 
-          #here::here("data/offshore", "seamap_cpue_2019_analysis.csv"), 
-          col_names = TRUE)
 
 region_summary <- seamap %>% 
   filter(is.na(region)      == FALSE) %>% 

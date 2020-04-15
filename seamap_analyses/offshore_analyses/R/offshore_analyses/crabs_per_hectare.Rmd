@@ -41,7 +41,8 @@ theme_set(theme_bw() + theme(panel.grid.major = element_blank(),
 
 
 ```{r data}
-seamap <- read_csv("~/Dropbox/SEAMAP_2019/data/offshore/seamap_cpue_2019.csv",
+seamap <- read_csv(#"~/Dropbox/SEAMAP_2019/data/offshore/seamap_cpue_2019.csv",
+                   "~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_cpue_2019.csv",
                    guess_max = 1e6, 
                    col_types = cols())
 
@@ -216,7 +217,7 @@ year_plot_1 + year_plot_2
 
 ```{r}
 #Assign Stat Zone from NMFS grid
-szones <- read_sf("~/Dropbox/SEAMAP_2019/data/gis_files/NMFS_Fishing_Grids_GOM_2013.shp", 
+szones <- read_sf("~/Dropbox/csap_studies/seamap_analyses/data/gis_files/NMFS_Fishing_Grids_GOM_2013.shp", 
                   crs = 4326)
 
 # Add a better StatZone ID by spatial overlap
@@ -347,7 +348,7 @@ seamap <- seamap %>%
 
 #Output seamap analysis file
 write_csv(seamap, 
-          "~/Dropbox/SEAMAP_2019/data/offshore/seamap_cpue_2019_analysis.csv", 
+          "~/Dropbox/csap_studies/seamap_analyses/data/offshore/seamap_cpue_2019_analysis.csv", 
           col_names = TRUE)
 
 region_summary <- seamap %>% 
@@ -571,7 +572,9 @@ season_summary <- seamap %>%
            occurrence_ymin    = ifelse(occurrence_ymin < 0, 0, occurrence_ymin)
          )
 
-season_summary %>% select(Survey_Year, Season, Stations, `Missing Obs`, `% Occurrence`, `Mean Catch`, SD, Overdispersed) %>% knitr::kable()
+season_summary %>% 
+  select(Survey_Year, Season, Stations, `Missing Obs`, `% Occurrence`, `Mean Catch`, SD, Overdispersed) %>% 
+  knitr::kable()
 #knitr::kable(season_summary)
 ```
 
@@ -1075,11 +1078,11 @@ p
 # Manuscript Model {.tabset .tabset-pills }
 
 ```{r data export}
-write_csv(seamap, str_c("~/Dropbox/SEAMAP_2019/data/offshore/", 
+write_csv(seamap, str_c("~/Dropbox/csap_studies/seamap_analyses/data/offshore/", 
                         "seamap_manuscriptmods_full.csv"), 
           col_names = TRUE)
 
-write_csv(seamap_west, str_c("~/Dropbox/SEAMAP_2019/data/offshore/",
+write_csv(seamap_west, str_c("~/Dropbox/csap_studies/seamap_analyses/data/offshore/",
                              "seamapwest_manuscriptmods_full.csv"), 
           col_names = TRUE)
 ```

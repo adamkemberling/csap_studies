@@ -10,13 +10,16 @@ library(here)
 # seamap <- read_csv('~/Documents/KrackN/Seamap_man/Historic_cleaned/seamap_sapidus_consolidation_2018.csv')
 
 # 2019 load
-catch <- read_csv(here("data_processed/gsmfc_processed", "seamap_catchdata.csv"), 
+catch <- read_csv(#here("data_processed/gsmfc_processed", "seamap_catchdata.csv"), 
+                  '~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_catchdata.csv',
                   guess_max = 1e6,
                   col_types = cols())
-trawl.info <- read_csv(here("data_processed/gsmfc_processed", "seamap_trawlinfo.csv"), 
+trawl.info <- read_csv(#here("data_processed/gsmfc_processed", "seamap_trawlinfo.csv"),
+                       '~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_trawlinfo.csv',
                        guess_max = 1e6, 
                        col_types = cols())
-seamap <- read_csv(here("data_processed/gsmfc_processed", "seamap_sapidus_consolidation_2019.csv"), 
+seamap <- read_csv(#here("data_processed/gsmfc_processed", "seamap_sapidus_consolidation_2019.csv"), 
+                   '~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_sapidus_consolidation_2019.csv',
                    guess_max = 1e6, 
                    col_types = cols())
 
@@ -66,24 +69,6 @@ seamap <- seamap[complete.cases(seamap$Start_Lat),]
 #degree.crs <- crs("+proj=longlat +ellps=WGS84 +datum=WGS84") #Degree coordinate reference system WGS 1984
 #meters.crs <- crs("+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs")
 
-###################  ggplot map polygons  #############
-map.world_polygon <- map_data("world")
-
-#positive catches in 40ft trawls
-seamap %>% mutate(Crab_Caught = ifelse(Sapidus_Catch > 0, T, F),
-                  Crab_Caught = factor(Crab_Caught, levels = c(T,F))) %>%
-  filter(Crab_Caught == T) %>% 
-  ggplot(aes(x = Start_Long, y = Start_Lat)) +
-  coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
-  coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
-  theme_classic() +  # Remove ugly grey background
-  theme(legend.position = "bottom") +  # Position the legend at the top of the plot
-  geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
-  geom_point(aes(color = Crab_Caught), alpha = .35) +
-  xlab("Longitude") +
-  ylab("Latitude") 
-
-
 
 #################  Get Catch per hectare, 1kt = 1.852km/h  ############
 seamap <- seamap %>%  
@@ -101,11 +86,59 @@ seamap <- seamap %>%
 #cpue points per year
 plot(seamap$Survey_Year, seamap$CPUE_towspd)
 
-#subset so no NA's
-seamap <- seamap[which(!is.na(seamap$CPUE_towspd) == TRUE),]
+#subset so no NA's for tow speed
+seamap <- seamap[which(!is.na(seamap$CPUE_towspd) == TRUE), ]
+
+#remove point over texas, and invalid point
+seamap <- seamap[which(seamap$Start_Long > -97.63193), ]
+seamap <- seamap[which(seamap$Start_Long < 0), ] #remove coordinate error
 
 
 
+
+
+
+
+
+####  Save out clean Data  ####
+seamap <- as.data.frame(seamap)
+#write_csv(seamap,"~/Documents/KrackN/Seamap_man/Historic_cleaned/seamap_cpue_2018.csv")
+write_csv(seamap, "~/Dropbox/csap_studies/seamap_analyses/data/GSMFC_processed/seamap_cpue_2019.csv", col_names = TRUE)
+
+
+
+
+####  Data Exploration  ####
+#timeline
+filter(seamap, Survey_Year > 1983) %>% 
+  group_by(Survey_Year) %>% 
+  summarise(CPUE = mean(CPUE_towspd, na.rm = T),
+            sd = sd(CPUE_towspd, na.rm = T)) %>% 
+  ggplot(aes(Survey_Year, CPUE)) +
+  geom_point() + 
+  geom_errorbar(aes(x = Survey_Year, ymin = 0, ymax = CPUE + sd))
+
+
+###################  ggplot map polygons  #############
+#map.world_polygon <- map_data("world")
+# 
+# #positive catches in 40ft trawls
+# seamap %>% mutate(Crab_Caught = ifelse(Sapidus_Catch > 0, T, F),
+#                   Crab_Caught = factor(Crab_Caught, levels = c(T,F))) %>%
+#   filter(Crab_Caught == T) %>% 
+#   ggplot(aes(x = Start_Long, y = Start_Lat)) +
+#   #coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
+#   coord_cartesian(xlim = c(-98.08, -79.95), ylim = c(24.8, 31.2)) +
+#   theme_classic() +  # Remove ugly grey background
+#   theme(legend.position = "bottom") +  # Position the legend at the top of the plot
+#   geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
+#   geom_point(aes(color = Crab_Caught), alpha = .35) +
+#   xlab("Longitude") +
+#   ylab("Latitude") 
+# 
+# 
+# 
+#
 # ####  CPUE_towspd yearly average  ####
 # library(data.table) # You'll also need to install this package
 # DT <- data.table(as.data.frame(seamap))# Convert data.frame to data.table
@@ -130,9 +163,7 @@ seamap <- seamap[which(!is.na(seamap$CPUE_towspd) == TRUE),]
 # arrows(catch_timeline$Survey_Year, 0, catch_timeline$Survey_Year, catch_timeline$CPUE+catch_timeline$sd, length=0.05, angle=90, code=3)
 
 
-#remove point over texas, and invalid point
-seamap <- seamap[which(seamap$Start_Long > -97.63193),]
-seamap <- seamap[which(seamap$Start_Long < 0),] #remove coordinate error
+
 
 
 #######################  calculate distance from shore  ##########################
@@ -159,61 +190,53 @@ seamap <- seamap[which(seamap$Start_Long < 0),] #remove coordinate error
 
 
 
-# Make Hex_Bin Plot
-seamap %>%
-  filter(Sapidus_Catch > 0) %>%
-  ggplot(aes(x = Start_Long, y = Start_Lat)) +
-  #coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
-  coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
-  geom_hex(bins = 600, alpha = 0.75) +
-  geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
-  scale_fill_distiller(palette = "Spectral") +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_classic() +
-  theme(legend.position = "bottom") + 
-  ggtitle("Frequency that Blue Crabs were Caught at a station From 1982-2017")
+# # Make Hex_Bin Plot
+# seamap %>%
+#   filter(Sapidus_Catch > 0) %>%
+#   ggplot(aes(x = Start_Long, y = Start_Lat)) +
+#   #coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
+#   coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
+#   geom_hex(bins = 600, alpha = 0.75) +
+#   geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
+#   scale_fill_distiller(palette = "Spectral") +
+#   xlab("Longitude") +
+#   ylab("Latitude") +
+#   theme_classic() +
+#   theme(legend.position = "bottom") + 
+#   ggtitle("Frequency that Blue Crabs were Caught at a station From 1982-2017")
+# 
+# 
+# #make 2d heatmap instead
+# seamap %>%
+#   filter(Sapidus_Catch > 0) %>%
+#   ggplot(aes(x = Start_Long, y = Start_Lat)) +
+#   coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
+#   geom_bin2d(bins = 700, alpha = 0.75) +
+#   geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
+#   scale_fill_distiller(palette = "Spectral") +
+#   xlab("Longitude") +
+#   ylab("Latitude") +
+#   theme_classic() +
+#   theme(legend.position = "bottom") + 
+#   ggtitle("Frequency that Blue Crabs were Caught at a station From 1982-2017")
 
 
-#make 2d heatmap instead
-seamap %>%
-  filter(Sapidus_Catch > 0) %>%
-  ggplot(aes(x = Start_Long, y = Start_Lat)) +
-  coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
-  geom_bin2d(bins = 700, alpha = 0.75) +
-  geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
-  scale_fill_distiller(palette = "Spectral") +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_classic() +
-  theme(legend.position = "bottom") + 
-  ggtitle("Frequency that Blue Crabs were Caught at a station From 1982-2017")
 
 
-#timeline
-filter(seamap, Survey_Year > 1983) %>% group_by(Survey_Year) %>% 
-  summarise(CPUE = mean(CPUE_towspd, na.rm = T),
-            sd = sd(CPUE_towspd, na.rm = T)) %>% 
-  ggplot(aes(Survey_Year, CPUE)) +
-  geom_point() + 
-  geom_errorbar(aes(x = Survey_Year, ymin = 0, ymax = CPUE + sd))
+
+# # Make Hex_Bin Plot by year
+# seamap %>%
+#   filter(Sapidus_Catch > 0, Survey_Year %in% 2000:2005) %>%
+#   ggplot(aes(x = Start_Long, y = Start_Lat)) +
+#   #coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
+#   coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
+#   geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
+#   geom_hex(bins = 600, alpha = 0.75) +
+#   scale_fill_distiller(palette = "Spectral") + 
+#   facet_wrap(~Survey_Year) +
+#   xlab("Longitude") +
+#   ylab("Latitude") +
+#   theme_classic() +
+#   theme(legend.position = "bottom") 
 
 
-# Make Hex_Bin Plot by year
-seamap %>%
-  filter(Sapidus_Catch > 0, Survey_Year %in% 2000:2005) %>%
-  ggplot(aes(x = Start_Long, y = Start_Lat)) +
-  #coord_quickmap() +  # Define aspect ratio of the map, so it doesn't get stretched when resizing
-  coord_cartesian(xlim = c(-98.08, -79.95),ylim = c(24.8, 31.2)) +
-  geom_polygon(data = map.world_polygon, aes(x = long, y = lat, group = group)) +
-  geom_hex(bins = 600, alpha = 0.75) +
-  scale_fill_distiller(palette = "Spectral") + 
-  facet_wrap(~Survey_Year) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  theme_classic() +
-  theme(legend.position = "bottom") 
-
-seamap <- as.data.frame(seamap)
-#write_csv(seamap,"~/Documents/KrackN/Seamap_man/Historic_cleaned/seamap_cpue_2018.csv")
-write_csv(seamap, here("data_processed/gsmfc_processed", "seamap_cpue_2019.csv"))

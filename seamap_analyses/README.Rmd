@@ -8,3 +8,49 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+
+# Data Provenance
+
+
+## Offshore Analyses
+
+Data used for offshore analyses of C. sapidus were taken from the [GSMFC website](seamap.gsmfc.com) in March of 2019 as csv files. Data cleanup from the raw GSMFC data to the final data put into the offshore model used in the manuscript is done in the following procession:
+
+ - `seamap_analyses/offshore_analyses/R/gsmfc_data_wrangling/Seamap_Data_Wrangle.R` : Make necessary joins and drop unnecessary columns.
+ - `seamap_analyses/offshore_analyses/R/gsmfc_data_wrangling/DistOffshore_DataExplo.R` : Perform any data filtering for bad observations and surveys outside this project's research scope. Estimate catch in hectares.
+ 
+- `seamap_analyses/offshore_analyses/R/offshore_analyses/crabs_pre_hectare.R` : The restriction of survey years 2000-2018 and the designation of study regions are done here. At this point an "analysis data set" has been finalized and no more filtering is done.
+
+
+## Reproductive Analyses
+
+
+# Code Overview
+
+
+## Offshore Analyses
+
+Final analyses added to the manuscript can be found here:
+
+- `seamap_analyses/offshore_analyses/R/final_analyses/Manuscript_Offshore_Modeling.Rmd`
+
+Exploratory analysis and prototype rmarkdowns can be found here:
+
+- `seamap_analyses/offshore_analyses/R/IOA_report.Rmd`
+
+- `seamap_analyses/offshore_analyses/R/crabs_per_hectare.Rmd`
+
+Additional R scripts not central to the final research products can be found here:
+ 
+- `seamap_analyses/offshore_analyses/R/mean_catch_estimates.R`
+ 
+- `seamap_analyses/offshore_analyses/R/hurdlemod_jags.R.Rmd`
+ 
+- `seamap_analyses/offshore_analyses/R/dlnorm_functions.R`
+  
+ 
+
+## Reproductive Analyses
+
+

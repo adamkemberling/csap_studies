@@ -15,6 +15,7 @@ editor_options:
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 #packages
+library(multcomp)
 library(ggspatial)
 library(MASS)
 library(here)
@@ -49,20 +50,24 @@ theme_set(theme_bw() +
 # Manuscript Model
 
 ```{r load data}
-seamap <- read_csv(str_c("~/Dropbox/SEAMAP_2019/data/offshore/", 
+seamap <- read_csv(str_c("~/Dropbox/csap_studies/seamap_analyses/data/offshore/", 
                         "seamap_manuscriptmods_full.csv"), 
+                   guess_max = 1e4,
                    col_types = cols()) %>% 
   mutate(year_f = factor(year_f),
-         Season = factor(season, levels = c("Summer", "Fall")),
+         Season = factor(season, levels = c("Summer", "Fall")), #For tables
+         season = factor(season, levels = c("Summer", "Fall")), #For models
          region = ifelse(region == "Louisiana", "LA West", region),
          region = factor(region, levels = c("Texas", "LA West", "MS Bight", "Florida"))
 )
 
-seamap_west <- read_csv(str_c("~/Dropbox/SEAMAP_2019/data/offshore/", 
+seamap_west <- read_csv(str_c("~/Dropbox/csap_studies/seamap_analyses/data/offshore/", 
                         "seamapwest_manuscriptmods_full.csv"), 
+                        guess_max = 1e4,
                         col_types = cols()) %>% 
   mutate(year_f = factor(year_f),
          Season = factor(season, levels = c("Summer", "Fall")),
+         season = factor(season, levels = c("Summer", "Fall")),
          region = ifelse(region == "Louisiana", "LA West", region),
          region = factor(region, levels = c("Texas", "LA West", "MS Bight", "Florida"))
 )
@@ -82,6 +87,13 @@ percent_zeros <- seamap_west %>% filter(sapidus_catch == 0) %>% count()
 station_count <- seamap_west %>% count()
 overall_mean  <- round(mean(seamap_west$cpue_towspd, na.rm = T), 3)
 overall_se    <- round(sd(seamap_west$cpue_towspd, na.rm = T) / sqrt(station_count), 3)
+
+seamap_west %>% 
+  #group_by(region, statzone) %>% 
+  group_by(region) %>% 
+  summarise(n = n()) %>% 
+  rename_all(str_to_title) %>% 
+  kable()
 
 ```
    
@@ -111,6 +123,25 @@ overall_mean  <- round(mean(seamap$cpue_towspd, na.rm = T), 3)
 percent_zeros <- seamap %>% filter(sapidus_catch == 0) %>% count()
 station_count <- seamap %>% count()
 overall_se    <- round(sd(seamap$cpue_towspd, na.rm = T) / sqrt(station_count), 3)
+
+
+seamap %>% 
+  #group_by(region, statzone) %>% 
+  group_by(region) %>% 
+  summarise(n = n()) %>% 
+  rename_all(str_to_title) %>% 
+  kable()
+
+# #checking salinity ranges
+# library(magrittr)
+# seamap %$% range(.$salinity_b, na.rm = T)
+# seamap %$% hist(.$salinity_b)
+# seamap %$% quantile(.$salinity_b, probs = c(0, 0.05, .5, 0.95, 1), na.rm = T)
+# 
+# seamap %>% filter(sapidus_catch > 0) %$% range(.$salinity_b, na.rm = T)
+# seamap %>% filter(sapidus_catch > 0) %$% hist(.$salinity_b)
+# seamap %>% filter(sapidus_catch > 0) %$% quantile(.$salinity_b, probs = c(0, 0.05, .5, 0.95, 1), na.rm = T)
+
 
 ```
 
@@ -336,25 +367,25 @@ rs_foa %>%
 
 ```{r west fig, fig.height = 4, eval = F}
 
-# Plot
-rs_plot <- rs_summary %>% 
-  ggplot(aes(region, `Mean Catch`, fill = Season)) +
-    geom_col(position = "dodge") +
-    geom_errorbar(aes(ymin = catch_ymin,
-                      ymax = catch_ymax),
-                  position = "dodge", 
-                  size = .25) +
-  scale_fill_manual(name = "", values = setNames(c("gray35", "gray70"), c("Summer", "Fall"))) +
-  labs(x = NULL,
-       y = expression(paste("Mean CPUE (crabs ", ha^{-1},")"))) + 
-  theme(
-    legend.position = c(1, .95),
-    legend.justification = c("right", "top"),
-    legend.box.just = "right",
-    legend.margin = margin(0, 6, 2, 2))
-
-
-rs_plot
+# # Plot
+# rs_plot <- rs_summary %>% 
+#   ggplot(aes(region, `Mean Catch`, fill = Season)) +
+#     geom_col(position = "dodge") +
+#     geom_errorbar(aes(ymin = catch_ymin,
+#                       ymax = catch_ymax),
+#                   position = "dodge", 
+#                   size = .25) +
+#   scale_fill_manual(name = "", values = setNames(c("gray35", "gray70"), c("Summer", "Fall"))) +
+#   labs(x = NULL,
+#        y = expression(paste("Mean CPUE (crabs ", ha^{-1},")"))) + 
+#   theme(
+#     legend.position = c(1, .95),
+#     legend.justification = c("right", "top"),
+#     legend.box.just = "right",
+#     legend.margin = margin(0, 6, 2, 2))
+# 
+# 
+# rs_plot
 ```
 
 ```{r full fig, fig.height = 4}
@@ -384,25 +415,27 @@ rs_plot_3
 ### Frequency of Occurrence
 
 ```{r west foa, fig.height = 4, eval = F}
-rs_plot_2 <- rs_foa %>% 
-  ggplot(aes(region, avg_percent_occurrence, fill = Season)) +
-    geom_col(position = "dodge") +
-    geom_errorbar(aes(ymin = occurrence_ymin,
-                      ymax = occurrence_ymax),
-                  position = "dodge",
-                  size = .25) +
-  scale_fill_manual(name = "", values = setNames(c("gray35", "gray70"), c("Summer", "Fall"))) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,1)) + 
-  labs(x = NULL,
-       y = "Percent occurrence") + 
-  theme(
-    legend.position = c(1, .95),
-    legend.justification = c("right", "top"),
-    legend.box.just = "right",
-    legend.margin = margin(0, 6, 2, 2))
-
-rs_plot_2
+# rs_plot_2 <- rs_foa %>% 
+#   ggplot(aes(region, avg_percent_occurrence, fill = Season)) +
+#     geom_col(position = "dodge") +
+#     geom_errorbar(aes(ymin = occurrence_ymin,
+#                       ymax = occurrence_ymax),
+#                   position = "dodge",
+#                   size = .25) +
+#   scale_fill_manual(name = "", values = setNames(c("gray35", "gray70"), c("Summer", "Fall"))) +
+#   scale_y_continuous(labels = scales::percent, limits = c(0,1)) + 
+#   labs(x = NULL,
+#        y = "Percent occurrence") + 
+#   theme(
+#     legend.position = c(1, .95),
+#     legend.justification = c("right", "top"),
+#     legend.box.just = "right",
+#     legend.margin = margin(0, 6, 2, 2))
+# 
+# rs_plot_2
 ```
+
+
 
 ```{r full foa, fig.height = 4}
 rs_plot_4 <- rs_foa_full %>% 
@@ -429,8 +462,8 @@ rs_plot_4
 ### Side x Side
 
 ```{r fig.height = 4, eval = FALSE}
-rs_plot <- rs_plot + theme(legend.position = "none")
-rs_plot + rs_plot_2
+# rs_plot <- rs_plot + theme(legend.position = "none")
+# rs_plot + rs_plot_2
 ```
 
 
@@ -454,41 +487,52 @@ rs_plot_full + rs_plot_4
 ```{r}
 
 #Candidate 1 - no interactions
-candidate_1 <- MASS:::glm.nb(sapidus_catch ~ year_f + region + season +   #Additive covariates
-            #year_f * region + 
-            offset(log(area_hectares)),
-            data = seamap_west)
+candidate_1 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f + region + season +   #Additive covariates
+  offset(log(area_hectares)),
+  data = seamap_west)
 
 #Candidate 2 - year * region
-candidate_2 <- MASS:::glm.nb(sapidus_catch ~ year_f + region + season +   #Additive covariates
-            year_f * region + 
-            offset(log(area_hectares)),
-            data = seamap_west)
+candidate_2 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f + region + season +   #Additive covariates
+  year_f * region + 
+  offset(log(area_hectares)),
+  data = seamap_west)
 
 #Candidate 3 - year * season
-candidate_3 <- MASS:::glm.nb(sapidus_catch ~ year_f + region + season +   #Additive covariates
-            year_f * season + 
-            offset(log(area_hectares)),
-            data = seamap_west)
+candidate_3 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f + region + season +   #Additive covariates
+  year_f * season + 
+  offset(log(area_hectares)),
+  data = seamap_west)
 
 #Candidate 4 - region * season
-candidate_4 <- MASS:::glm.nb(sapidus_catch ~ year_f + region + season +   #Additive covariates
-            region * season + 
-            offset(log(area_hectares)),
-            data = seamap_west)
+candidate_4 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f + region + season +   #Additive covariates
+  region * season + 
+  offset(log(area_hectares)),
+  data = seamap_west)
 
 #Candidate 5 - year * region + region * season
-candidate_5 <- MASS:::glm.nb(sapidus_catch ~ year_f + region + season +   #Additive covariates
-            year_f * region + region * season +
-            offset(log(area_hectares)),
-            data = seamap_west)
+candidate_5 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f + region + season +   #Additive covariates
+  year_f * region + region * season +
+  offset(log(area_hectares)),
+  data = seamap_west)
+
+#Candidate 6 - All interactions
+candidate_6 <- MASS:::glm.nb(
+  sapidus_catch ~ year_f * region * season + 
+  offset(log(area_hectares)),
+  data = seamap_west)
 
 model_list <- list(
-  "no interactions" = candidate_1,
-  "year * region" = candidate_2,
-  "year * season" = candidate_3,
-  "region * season" = candidate_4,
-  "all interactions" = candidate_5
+  "no interactions"               = candidate_1,
+  "year * region"                 = candidate_2,
+  "year * season"                 = candidate_3,
+  "region * season"               = candidate_4,
+  "Year * region & year * season" = candidate_5,
+  "all interactions"              = candidate_6
 )
 
 model_aic <- map(model_list,AIC)
@@ -499,8 +543,17 @@ model_aic <- bind_rows(
   )
 model_aic %>% mutate(`Delta AIC` = AIC - min(AIC)) %>% knitr::kable()
 
-best_mod <- candidate_2
-rm(candidate_1, candidate_2, candidate_3, candidate_4, candidate_5)
+best_mod <- candidate_6
+rm(candidate_1, candidate_2, candidate_3, candidate_4, candidate_5, candidate_6)
+
+
+# # Check number of predictions from model vs. number of positive catch
+# # To determine whether 0 catch is dropped or not
+# predict(best_mod, type = "response") %>% length()
+# seamap_west %>% filter(sapidus_catch > 0) %>% nrow()
+# 
+# #How many predictions are exactly 0
+# sum(predict(best_mod, type = "response") == 0)
 ```
 
 ### Predictor Significance
@@ -516,7 +569,13 @@ rm(candidate_1, candidate_2, candidate_3, candidate_4, candidate_5)
 lrt_y  <- drop1(best_mod, scope = ~ year_f, test = "Chisq")
 lrt_r  <- drop1(best_mod, scope = ~ region, test = "Chisq")
 lrt_s  <- drop1(best_mod, scope = ~ season, test = "Chisq")
-lrt_yr <- drop1(best_mod, scope = ~ year_f*region, test = "Chisq")
+lrt_yr <- drop1(best_mod, scope = ~ year_f * region, test = "Chisq")
+
+#Dropping year * season for global model
+lrt_ys <- drop1(best_mod, scope = ~ year_f * season, test = "Chisq")
+
+#Dropping region * season for global
+lrt_rs <- drop1(best_mod, scope = ~ region * season, test = "Chisq")
 
 bind_rows(
   list(
@@ -527,7 +586,12 @@ bind_rows(
     lrt_s  %>% as.data.frame() %>% 
       rownames_to_column(var = "Predictor") %>% filter(Predictor == "season"),
     lrt_yr  %>% as.data.frame() %>% 
-      rownames_to_column(var = "Predictor") %>% filter(Predictor == "year_f:region")
+      rownames_to_column(var = "Predictor") %>% filter(Predictor == "year_f:region"),
+    lrt_ys  %>% as.data.frame() %>% 
+      rownames_to_column(var = "Predictor") %>% filter(Predictor == "year_f:season"),
+    lrt_rs  %>% as.data.frame() %>% 
+      rownames_to_column(var = "Predictor") %>% filter(Predictor == "region:season")
+    
 )) %>% kable()
 
 
@@ -551,12 +615,47 @@ broom::tidy(best_mod) %>% kable()
 ```
 
 
-### Interaction Plot
+### Interaction Plots
 
 ```{r}
-emmip(best_mod, region ~ year_f, type = "response", offset = 0) + labs(x = NULL, caption = "Interaction Plot for year * region factors")
+emmip(best_mod, 
+      region ~ year_f, type = "response", offset = 0) + 
+  labs(x = NULL, caption = "Interaction Plot for year * region factors") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = c(0.8, 0.8))
 ```
 
+```{r}
+emmip(best_mod, 
+      season ~ region, type = "response", offset = 0) + 
+  labs(x = NULL, caption = "Interaction Plot for region * season factors") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = c(0.8, 0.8))
+```
+
+```{r}
+emmip(best_mod, 
+      season ~ year_f, type = "response", offset = 0) + 
+  labs(x = NULL, caption = "Interaction Plot for year * season factors") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+        legend.position = c(0.8, 0.8))
+```
+
+
+###  Tukey HSD multiple comparison test {.tabset .tabset-pills}
+
+
+####  Test 1. Region
+
+```{r}
+summary(glht(best_mod, mcp(region = "Tukey")))
+```
+
+####  Test 2. Year
+
+```{r}
+summary(glht(best_mod, mcp(season = "Tukey")))
+```
 
 ## Catch per Hectare Plot {.tabset .tabset-pills}
 
@@ -699,7 +798,7 @@ mex <- ne_states(country = "mexico") %>%
 
 
 #Load the simplified nmfs grid
-szones <- read_sf("~/Dropbox/SEAMAP_2019/data/gis_files/nmfs_grids_clipped_rough.shp", 
+szones <- read_sf("~/Dropbox/csap_studies/seamap_analyses/data/gis_files/nmfs_grids_clipped_rough.shp", 
                   crs = 4326) #%>% st_simplify()
 
 
@@ -726,7 +825,8 @@ seamap_sf_agg <- seamap %>%
   group_by(lon_bin, lat_bin) %>% 
   summarise(n_stations = n(),
             total_catch = sum(sapidus_catch, na.rm = T),
-            avg_cpue = mean(cpue_towspd)) %>% 
+            avg_cpue = mean(cpue_towspd),
+            cpue_variance = sd(cpue_towspd, na.rm = T) ^ 2) %>% 
   st_as_sf(coords = c("lon_bin", "lat_bin"), crs = 4326, remove = FALSE)
 
 ####  Total Catch  ####
@@ -757,6 +857,21 @@ cpue_ras <- st_rasterize(
   )
 
 #plot(cpue_ras, axes = T, main = " Mean Catch/Hectare - All Years 2000+")
+
+
+#### CPUE Vaiance ####
+
+variance_ras <- st_rasterize(
+  seamap_sf_agg["cpue_variance"],
+  template = st_as_stars(
+      test_bbox,
+      #st_bbox(seamap_sf), 
+      values = NA_real_,
+      nx = length(num_x),
+      ny = length(num_y))
+  )
+
+#plot(variance_ras, axes = T, main = "Variance in Mean Catch/Hectare - All Years 2000+")
 
 ####  Sampling Effort  ####
 effort_ras <- st_rasterize(
@@ -887,6 +1002,40 @@ ggplot() +
     pad_x = unit(0.5, "in"))
 
 ```
+
+
+### Variance in CPUE
+
+```{r}
+####  Catch Variance  ####
+ggplot() +
+  geom_stars(data = variance_ras) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
+  scale_y_continuous(breaks = c(25,30)) +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(0, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(
+    pad_x = unit(0.5, "in"))
+```
+
+
+
 
 ### Total Catch
 
