@@ -34,7 +34,8 @@ conflicted::conflict_prefer("filter", "dplyr")
 
 #Format ggplot for rest of document
 theme_set(theme_bw() + 
-          theme(panel.grid.major = element_blank(), 
+          theme(
+            panel.grid.major = element_blank(), 
             panel.grid.minor = element_blank(), 
             panel.border = element_rect(fill = NA),
             axis.text = element_text(size = 12, color = "black"),
@@ -95,6 +96,17 @@ seamap_west %>%
   rename_all(str_to_title) %>% 
   kable()
 
+
+# # Statzone tally check
+# seamap_west %>% 
+#   group_by(survey_year, season, statzone) %>% 
+#   summarise(n_samples = n()) %>% 
+#   ungroup() %>% 
+#   mutate(header = str_c(survey_year, "_", season)) %>% 
+#   select(-c(survey_year, season)) %>% 
+#   pivot_wider(names_from = header, values_from = n_samples) %>% 
+#   clipr::write_clip()
+#   write.table(., "clipboard", sep="\t", row.names=FALSE)
 ```
    
  * Total Number of Stations = `r nrow(seamap_west)`     
@@ -111,10 +123,10 @@ seamap_west %>%
  
  * Stations with no catch: `r percent_zeros` / `r station_count` Stations **or** `r round((percent_zeros / station_count) * 100, 2)`%    
  
-
+```{r seamap all stats, eval = FALSE}
 ### East + West
 
-```{r seamap all stats}
+
 start_year    <- min(as.numeric(as.character(seamap$survey_year)))
 end_year      <- max(as.numeric(as.character(seamap$survey_year)))
 total_catch   <- sum(seamap$sapidus_catch, na.rm = T)
@@ -143,7 +155,7 @@ seamap %>%
 # seamap %>% filter(sapidus_catch > 0) %$% quantile(.$salinity_b, probs = c(0, 0.05, .5, 0.95, 1), na.rm = T)
 
 
-```
+
 
    
  * Total Number of Stations = `r nrow(seamap)`     
@@ -160,7 +172,7 @@ seamap %>%
  
  * Stations with no catch: `r percent_zeros` / `r station_count` Stations **or** `r round((percent_zeros / station_count) * 100, 2)`% 
 
-
+```
  
 ## Annual Catch and Occurrence {.tabset}
 
@@ -387,6 +399,7 @@ rs_foa %>%
 # 
 # rs_plot
 ```
+
 
 ```{r full fig, fig.height = 4}
 
@@ -701,7 +714,7 @@ p
 
 ```
 
-### Observed vs. Predicted Data
+### Observed vs. Predicted Data {.tabset}
 
 ```{r}
 #Observed data
@@ -727,8 +740,12 @@ panel_means <- seamap_west %>%
          region = factor(region, levels = c("Texas", "LA West", "MS Bight")))
 
 
+```
 
-#ggplot of standardized index of abundance
+#### Original
+
+```{r}
+# Model predictions and observed means
 p <- best_mod_dat %>% 
   mutate(year_n = as.numeric(as.character(year_f))) %>% 
   ggplot(aes(year_n, response)) +
@@ -774,11 +791,79 @@ p
 
 ```
 
+#### Predictions Only
 
+
+```{r}
+# Model Predictions Only
+p <- best_mod_dat %>% 
+  mutate(year_n = as.numeric(as.character(year_f))) %>% 
+  ggplot(aes(year_n, response)) +
+    geom_ribbon(aes(year_n,
+                    ymin = asymp.LCL,
+                    ymax = asymp.UCL),
+                fill = "gray80") +
+    geom_line(aes(x = year_n, 
+                  y = response, 
+                  group = 1), 
+                  col = "black") +
+    geom_point(aes(x = year_n, 
+                   y = response), 
+                   col = "black") +
+    # # Group Means
+    # geom_hline(data = panel_means,
+    #            aes(yintercept = Mean_CPUE,
+    #                color = "Group Mean"), 
+    #            size = 1,
+    #            alpha = 0.5, 
+    #            linetype = 2) +
+    # scale_color_manual(values = c("darkred")) + 
+    # Theme changes
+    labs(
+      x = NULL, 
+      y = expression(paste(" Predicted Mean CPUE (crabs ", ha^{-1},")"))) +
+  theme(legend.position = c(1, .98),
+    legend.justification = c("right", "top"),
+    legend.box.just = "right",
+    legend.margin = margin(0, 6, 2, 2),
+    legend.background = element_rect(fill = NA),
+    legend.title = element_blank()) +
+  facet_grid(season~region)
+p
+```
+
+####  Observed Only
+
+```{r}
+# Observed Means Only
+p <- ggplot(
+      data = obs_timeline, 
+      aes(x = survey_year, 
+          y = Mean_CPUE)) +
+    geom_line(
+      aes(group = region), 
+      col = "black", 
+      linetype = 1) +
+    geom_point(
+      aes(group = region), 
+      col = "black") +
+    labs(
+      x = NULL, 
+      y = expression(paste("Observed Mean CPUE (crabs ", ha^{-1},")"))) +
+  theme(legend.position = c(1, .98),
+    legend.justification = c("right", "top"),
+    legend.box.just = "right",
+    legend.margin = margin(0, 6, 2, 2),
+    legend.background = element_rect(fill = NA),
+    legend.title = element_blank()) +
+  facet_grid(season~region)
+p
+```
 
 
 ## Raster Plots  {.tabset}
 
+*NOTE: Contains Data Only from Western-Gulf Subset*
 
 ```{r spatial data setup}
 
@@ -807,7 +892,8 @@ szones <- read_sf("~/Dropbox/csap_studies/seamap_analyses/data/gis_files/nmfs_gr
 
 
 
-#Custom grid for rasterize
+####  Custom grids for rasterize  ####
+
 test_bbox <- st_bbox(c(xmin = -97.5, xmax = -81,
                        ymin = 24.3, ymax = 30.5),
                      crs = st_crs(4326))
@@ -818,71 +904,84 @@ num_y <- seq(from = 24.4, to = 30.4, by = 0.2)
 
 
 ####  Aggregation  ####
-#Aggregating the seamap model into bins
-seamap_sf_agg <- seamap %>% 
+
+season_rasters <- seamap_west %>% 
   mutate(lon_bin = round(start_long, 1),
          lat_bin = round(start_lat, 1)) %>% 
-  group_by(lon_bin, lat_bin) %>% 
-  summarise(n_stations = n(),
-            total_catch = sum(sapidus_catch, na.rm = T),
-            avg_cpue = mean(cpue_towspd),
-            cpue_variance = sd(cpue_towspd, na.rm = T) ^ 2) %>% 
-  st_as_sf(coords = c("lon_bin", "lat_bin"), crs = 4326, remove = FALSE)
+  split(.$season) %>% 
+  map(function(x) {
+  
+    #Aggregating the seamap data into bins
+    seamap_sf_agg <- x %>% 
+      group_by(lon_bin, lat_bin) %>% 
+      summarise(n_stations = n(),
+                total_catch = sum(sapidus_catch, na.rm = T),
+                avg_cpue = mean(cpue_towspd),
+                cpue_variance = sd(cpue_towspd, na.rm = T) ^ 2) %>% 
+      st_as_sf(coords = c("lon_bin", "lat_bin"), crs = 4326, remove = FALSE)
 
-####  Total Catch  ####
+    ####  Total Catch  ####
+    
+    #Convert to Raster and plot 
+    catch_ras <- st_rasterize(
+      seamap_sf_agg["total_catch"],
+      template = st_as_stars(
+          test_bbox,
+          #st_bbox(seamap_sf), 
+          values = NA_real_,
+          nx = length(num_x),
+          ny = length(num_y))
+      )
+    
+    
+    ####  Mean CPUE  ####
+    
+    cpue_ras <- st_rasterize(
+      seamap_sf_agg["avg_cpue"],
+      template = st_as_stars(
+          test_bbox,
+          #st_bbox(seamap_sf), 
+          values = NA_real_,
+          nx = length(num_x),
+          ny = length(num_y))
+      )
+    
+    
+    #### CPUE Vaiance ####
+    
+    variance_ras <- st_rasterize(
+      seamap_sf_agg["cpue_variance"],
+      template = st_as_stars(
+          test_bbox,
+          #st_bbox(seamap_sf), 
+          values = NA_real_,
+          nx = length(num_x),
+          ny = length(num_y))
+      )
+    
+    
+    ####  Sampling Effort  ####
+    effort_ras <- st_rasterize(
+      seamap_sf_agg["n_stations"],
+      template = st_as_stars(
+          test_bbox,
+          #st_bbox(seamap_sf), 
+          values = NA_real_,
+          nx = length(num_x),
+          ny = length(num_y))
+      )
+    
+    
+    ####  Output List  ####
+    return(list(
+      "agg_data" = seamap_sf_agg, # In case we need to use geom_tile
+      "catch" = catch_ras,
+      "effort" = effort_ras,
+      "variance" = variance_ras,
+      "cpue" = cpue_ras
+    ))
 
-#Convert to Raster and plot 
-catch_ras <- st_rasterize(
-  seamap_sf_agg["total_catch"],
-  template = st_as_stars(
-      test_bbox,
-      #st_bbox(seamap_sf), 
-      values = NA_real_,
-      nx = length(num_x),
-      ny = length(num_y))
-  )
-
-#plot(catch_ras, axes = T, main = "Total Sapidus Catch - All Years 2000+")
-
-####  Mean CPUE  ####
-
-cpue_ras <- st_rasterize(
-  seamap_sf_agg["avg_cpue"],
-  template = st_as_stars(
-      test_bbox,
-      #st_bbox(seamap_sf), 
-      values = NA_real_,
-      nx = length(num_x),
-      ny = length(num_y))
-  )
-
-#plot(cpue_ras, axes = T, main = " Mean Catch/Hectare - All Years 2000+")
-
-
-#### CPUE Vaiance ####
-
-variance_ras <- st_rasterize(
-  seamap_sf_agg["cpue_variance"],
-  template = st_as_stars(
-      test_bbox,
-      #st_bbox(seamap_sf), 
-      values = NA_real_,
-      nx = length(num_x),
-      ny = length(num_y))
-  )
-
-#plot(variance_ras, axes = T, main = "Variance in Mean Catch/Hectare - All Years 2000+")
-
-####  Sampling Effort  ####
-effort_ras <- st_rasterize(
-  seamap_sf_agg["n_stations"],
-  template = st_as_stars(
-      test_bbox,
-      #st_bbox(seamap_sf), 
-      values = NA_real_,
-      nx = length(num_x),
-      ny = length(num_y))
-  )
+})
 
 ```
 
@@ -892,7 +991,6 @@ effort_ras <- st_rasterize(
 
 #Numbering for statzones
 sz_df <- tribble(
-  
 ~"SZ", ~"long",  ~"lat",
 21,    -96.5,     26.5,
 20,    -96.7,  27.5,
@@ -919,23 +1017,46 @@ sz_df <- tribble(
 
 ) %>% mutate(SZ = as.character(SZ))
 
+west_zones <- c(21:13, 11)
+
+
+# # Entire Gulf
+# ggplot() +
+#   geom_sf(data = szones, fill = NA) + # Full Gulf
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   geom_text(data = sz_df, aes(long, lat, label = SZ), size = 3.5) + # Full
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA) + # Full
+#   labs(x = NULL, y = NULL)  +
+#   scale_y_continuous(breaks = c(25,30)) +
+#   annotation_north_arrow(
+#     height = unit(0.4, "in"),
+#     location = "bl",
+#     which_north = "true",
+#     pad_x = unit(0, "in"),
+#     pad_y = unit(0, "in"),
+#     style = north_arrow_fancy_orienteering) +
+#   annotation_scale(pad_x = unit(0.5, "in"))
+
+
+# West Only
 ggplot() +
-  geom_sf(data = szones, fill = NA) +
+  geom_sf(data = filter(szones, StatZone %in% west_zones), fill = NA) + # West
   geom_sf(data = usmap) +
   geom_sf(data = mex) +
-  geom_text(data = sz_df, aes(long, lat, label = SZ), size = 3.5) +
-  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
+  geom_text(data = filter(sz_df, SZ %in% west_zones), 
+            aes(long, lat, label = SZ), size = 3.5) + # West
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) + # West
   labs(x = NULL, y = NULL)  +
-  scale_y_continuous(breaks = c(25,30)) +
-  annotation_north_arrow(
-    height = unit(0.4, "in"),
-    location = "bl", 
-    which_north = "true", 
-    pad_x = unit(0, "in"), 
-    pad_y = unit(0, "in"),
-    style = north_arrow_fancy_orienteering) +
-  annotation_scale(
-    pad_x = unit(0.5, "in"))
+  scale_y_continuous(breaks = c(25,30)) #+
+  # annotation_north_arrow(
+  #   height = unit(0.4, "in"),
+  #   location = "bl", 
+  #   which_north = "true", 
+  #   pad_x = unit(4.15, "in"), 
+  #   pad_y = unit(0, "in"),
+  #   style = north_arrow_fancy_orienteering) +
+  # annotation_scale(pad_x = unit(2.8, "in")) # West
 ```
 
 
@@ -944,13 +1065,47 @@ ggplot() +
 ### Sampling Effort
 
 ```{r}
-####  Sampling Effort  ####
+
+####  Entire Gulf  ####
+
+# ####  Sampling Effort  ####
+# ggplot() +
+#   geom_stars(data = effort_ras) +
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA) +
+#   scale_y_continuous(breaks = c(25,30)) +
+#   labs(x = NULL, y = NULL) +
+#   guides(fill = guide_colorbar(title = "Total Sampling Effort (Stations)",
+#                                title.hjust = 0.5, 
+#                                title.position = "top",
+#                                barwidth = 10)) +
+#   theme(legend.position = "bottom", 
+#         legend.text = element_text(size  = 12), 
+#         legend.title = element_text(size = 12)) +
+#   annotation_north_arrow(
+#     height = unit(0.4, "in"),
+#     location = "bl", 
+#     which_north = "true", 
+#     pad_x = unit(0, "in"), 
+#     pad_y = unit(0, "in"),
+#     style = north_arrow_fancy_orienteering) +
+#   annotation_scale(
+#     pad_x = unit(0.5, "in"))
+
+
+
+
+####  West Only  ####
+
+# Summer
 ggplot() +
-  geom_stars(data = effort_ras) +
+  geom_stars(data = season_rasters$Summer$effort) +
   geom_sf(data = usmap) +
   geom_sf(data = mex) +
   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
-  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
   scale_y_continuous(breaks = c(25,30)) +
   labs(x = NULL, y = NULL) +
   guides(fill = guide_colorbar(title = "Total Sampling Effort (Stations)",
@@ -964,11 +1119,37 @@ ggplot() +
     height = unit(0.4, "in"),
     location = "bl", 
     which_north = "true", 
-    pad_x = unit(0, "in"), 
+    pad_x = unit(5.85, "in"), 
     pad_y = unit(0, "in"),
     style = north_arrow_fancy_orienteering) +
-  annotation_scale(
-    pad_x = unit(0.5, "in"))
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+
+
+# Fall
+
+ggplot() +
+  geom_stars(data = season_rasters$Fall$effort) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous(breaks = c(25,30)) +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Total Sampling Effort (Stations)",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
 ```
 
 ### Catch per Hectare
@@ -976,12 +1157,40 @@ ggplot() +
 ```{r}
 
 ####  CPUE  ####
+
+# ####  Entire Gulf  ####
+# ggplot() +
+#   geom_stars(data = cpue_ras) +
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA) +
+#   scale_y_continuous(breaks = c(25,30)) +
+#   labs(x = NULL, y = NULL) +
+#   guides(fill = guide_colorbar(title = "Average Catch/Hectare",
+#                                title.hjust = 0.5, 
+#                                title.position = "top",
+#                                barwidth = 10)) +
+#   theme(legend.position = "bottom", 
+#         legend.text = element_text(size  = 12), 
+#         legend.title = element_text(size = 12)) +
+#   annotation_north_arrow(
+#     height = unit(0.4, "in"),
+#     location = "bl", 
+#     which_north = "true", 
+#     pad_x = unit(0, "in"), 
+#     pad_y = unit(0, "in"),
+#     style = north_arrow_fancy_orienteering) +
+#   annotation_scale(
+#     pad_x = unit(0.5, "in"))
+
+# Summer
 ggplot() +
-  geom_stars(data = cpue_ras) +
+  geom_stars(data = season_rasters$Summer$cpue) +
   geom_sf(data = usmap) +
   geom_sf(data = mex) +
   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
-  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
   scale_y_continuous(breaks = c(25,30)) +
   labs(x = NULL, y = NULL) +
   guides(fill = guide_colorbar(title = "Average Catch/Hectare",
@@ -995,11 +1204,35 @@ ggplot() +
     height = unit(0.4, "in"),
     location = "bl", 
     which_north = "true", 
-    pad_x = unit(0, "in"), 
+    pad_x = unit(5.85, "in"), 
     pad_y = unit(0, "in"),
     style = north_arrow_fancy_orienteering) +
-  annotation_scale(
-    pad_x = unit(0.5, "in"))
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+
+# Fall
+ggplot() +
+  geom_stars(data = season_rasters$Fall$cpue) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous(breaks = c(25,30)) +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Average Catch/Hectare",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
 
 ```
 
@@ -1008,13 +1241,42 @@ ggplot() +
 
 ```{r}
 ####  Catch Variance  ####
+
+####  Entire Gulf  ####
+# ggplot() +
+#   geom_stars(data = variance_ras) +
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA) +
+#   scale_y_continuous() +
+#   labs(x = NULL, y = NULL) +
+#   guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
+#                                title.hjust = 0.5, 
+#                                title.position = "top",
+#                                barwidth = 10)) +
+#   theme(legend.position = "bottom", 
+#         legend.text = element_text(size  = 12), 
+#         legend.title = element_text(size = 12)) +
+#   annotation_north_arrow(
+#     height = unit(0.4, "in"),
+#     location = "bl", 
+#     which_north = "true", 
+#     pad_x = unit(0, "in"), 
+#     pad_y = unit(0, "in"),
+#     style = north_arrow_fancy_orienteering) +
+#   annotation_scale(
+#     pad_x = unit(0.5, "in"))
+
+
+# Summer
 ggplot() +
-  geom_stars(data = variance_ras) +
+  geom_stars(data = season_rasters$Summer$variance) +
   geom_sf(data = usmap) +
   geom_sf(data = mex) +
   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
-  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
-  scale_y_continuous(breaks = c(25,30)) +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
   labs(x = NULL, y = NULL) +
   guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
                                title.hjust = 0.5, 
@@ -1027,29 +1289,22 @@ ggplot() +
     height = unit(0.4, "in"),
     location = "bl", 
     which_north = "true", 
-    pad_x = unit(0, "in"), 
+    pad_x = unit(5.85, "in"), 
     pad_y = unit(0, "in"),
     style = north_arrow_fancy_orienteering) +
-  annotation_scale(
-    pad_x = unit(0.5, "in"))
-```
+  annotation_scale(pad_x = unit(4.25, "in")) # West
 
 
-
-
-### Total Catch
-
-```{r}
-####  Total Catch  ####
+# Fall
 ggplot() +
-  geom_stars(data = catch_ras) +
+  geom_stars(data = season_rasters$Fall$variance) +
   geom_sf(data = usmap) +
   geom_sf(data = mex) +
   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
-  coord_sf(xlim = c(-98, -81), ylim = c(24, 31)) +
-  scale_y_continuous(breaks = c(25,30)) +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
   labs(x = NULL, y = NULL) +
-  guides(fill = guide_colorbar(title = "Total C. sapidus Caught",
+  guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
                                title.hjust = 0.5, 
                                title.position = "top",
                                barwidth = 10)) +
@@ -1060,11 +1315,200 @@ ggplot() +
     height = unit(0.4, "in"),
     location = "bl", 
     which_north = "true", 
-    pad_x = unit(0, "in"), 
+    pad_x = unit(5.85, "in"), 
     pad_y = unit(0, "in"),
     style = north_arrow_fancy_orienteering) +
-  annotation_scale(
-    pad_x = unit(0.5, "in"))
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+```
+
+
+
+
+### Total Catch
+
+```{r}
+####  Total Catch  ####
+
+
+####  Entire Gulf  ####
+# ggplot() +
+#   geom_stars(data = catch_ras) +
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA) +
+#   scale_y_continuous(breaks = c(25,30)) +
+#   labs(x = NULL, y = NULL) +
+#   guides(fill = guide_colorbar(title = "Total C. sapidus Caught",
+#                                title.hjust = 0.5, 
+#                                title.position = "top",
+#                                barwidth = 10)) +
+#   theme(legend.position = "bottom", 
+#         legend.text = element_text(size  = 12), 
+#         legend.title = element_text(size = 12)) +
+#   annotation_north_arrow(
+#     height = unit(0.4, "in"),
+#     location = "bl", 
+#     which_north = "true", 
+#     pad_x = unit(0, "in"), 
+#     pad_y = unit(0, "in"),
+#     style = north_arrow_fancy_orienteering) +
+#   annotation_scale(
+#     pad_x = unit(0.5, "in"))
+
+# Summer
+ggplot() +
+  geom_stars(data = season_rasters$Summer$catch) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+
+# Fall
+ggplot() +
+  geom_stars(data = season_rasters$Fall$catch) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Variance in Average Catch/Hectare",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+```
+
+
+### Outlining Cells with Geom_Tile
+
+```{r}
+# Fall
+ggplot() +
+  geom_tile(data = season_rasters$Summer$agg_data, 
+            aes(x = lon_bin, y = lat_bin, fill = n_stations), 
+            color = "white", size = 0.05) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "Total Stations - Summer",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
+```
+
+
+
+
+### Study Area Size From Convex Hull
+
+```{r}
+# #summer stations only
+# summer_sf <- seamap_west %>% 
+#   filter(season == "Summer") %>% 
+#   st_as_sf(coords = c("start_long", "start_lat"), crs = 4326, remove = FALSE)
+# 
+# 
+# #make convex hull from multipoints object
+# summer_hull <- st_convex_hull(st_union(summer_sf))
+# 
+# # Intersect with the statzones we care about
+# important_zones <- szones %>% dplyr::filter(StatZone %in% seamap_west$statzone)
+# summer_hull_t <- st_intersection(summer_hull, important_zones)
+# summer_hull_sf <- st_as_sf(summer_hull_t)
+# 
+# #plot it out
+# ggplot() +
+#   geom_sf(data = usmap) +
+#   geom_sf(data = mex) +
+#   geom_sf(data = summer_hull_sf, color = "royalblue", fill = NA) +
+#   coord_sf(xlim = c(-98, -81), ylim = c(24, 31), datum = NA)
+# 
+# 
+# #Gebco bathymetric data
+# bathy <- raster::raster("/Users/adamkemberling/Dropbox/csap_studies/seamap_analyses/data/gis_files/GEBCO/gebco_2019.tif")
+# 
+# #60 fathom bathymetry as sp object
+# bathy60 <- raster::rasterToContour(bathy, levels = c(-60 * 1.8288))
+# bathy60_sf <- st_as_sf(bathy60, crs = 4326)
+# 
+# 
+# # Trim polygon using raster
+# # OR clip raster and select cells < 60fm then create new polygon
+# bathy_mask <- raster::mask(bathy, mask = summer_hull_sf)
+# bathy_crop <- raster::crop(bathy_mask, y = summer_hull_sf)
+# 
+# # Now create a depth mask for < 60fm
+# bathy_test <- bathy_crop
+# bathy_test[bathy_crop < (-60 * 1.8288)] <- NA
+# plot(bathy_test, main = "Depths <= 60 fathoms")
+# 
+# 
+# ####  Get area from raster  ####\#get sizes of all cells in raster [km2]
+# cell_size <- raster::area(bathy_test, na.rm=TRUE, weights=FALSE)
+# 
+# #delete NAs from vector of all raster cells
+# ##NAs lie outside of the rastered region, can thus be omitted
+# cell_size <- cell_size[!is.na(cell_size)]
+# 
+# #compute area [km2] of all cells in geo_raster
+# raster_area <- length(cell_size) * median(cell_size)
+# raster_area <- round(raster_area, digits = 1)
+
+# Pre-processing determined raster area to be
+raster_area <- 122297.8 #square kilometers
+
+# Print area of Study Area according to raster object
+print(paste("Area of Analysis Data Study Area (raster):", raster_area,"km2"))
+
+print(paste("Area of Analysis Data Study Area (raster):", raster_area * 100, "Hectares"))
+
+
+# If we want to use the polygon area instead, should use an equal area projection
+# proj string details here:
+# https://proj.org/operations/projections/laea.html 
 
 ```
 

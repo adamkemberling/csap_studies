@@ -35,6 +35,10 @@ Final analyses added to the manuscript can be found here:
 
 - `seamap_analyses/offshore_analyses/R/final_analyses/Manuscript_Offshore_Modeling.Rmd`
 
+Sex ratios and carapace width summaries are done here:
+
+ - `seamap_analyses/offshore_analyses/R/sex_ratios/sex_ratios.R`
+
 Exploratory analysis and prototype rmarkdowns can be found here:
 
 - `seamap_analyses/offshore_analyses/R/IOA_report.Rmd`
