@@ -19,10 +19,16 @@ Gulf States Marine Fisheries Commission, and biological data collected
 in the field. Both the timestamped data, and the results of the
 biological data collection are backed up on the cloud.
 
-## Repo Struucture
+## Repo Structure
 
 There are two main branches to this repo. The first relates to the data
 and analyses related to the mark-recapture study. The second is related
 to data collected by SEAMAP or with assistance of its partner
 organizations. This includes fecundity estimates as well as offshore
 population estimates.
+
+**[Branch 1:
+Mark-Recapture](github.com/adamkemberling/csap_studies/master/tagging_analyses)**
+
+**[Branch 2: Offshore
+Analyses](github.com.adamkemberling/csap_studies/master/seamap_analyses)**
