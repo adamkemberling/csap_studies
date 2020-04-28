@@ -4,3 +4,9 @@
 .Ruserdata
 tagging_analyses/qgis_maps/
 .DS_Store
+seamap_analyses/summer_analysis_hull.shp
+seamap_analyses/summer_analysis_hull.dbf
+seamap_analyses/summer_analysis_hull.prj
+seamap_analyses/summer_analysis_hull.shx
+seamap_analyses/summer_analysis_60fm_hull.tif
+*.tif

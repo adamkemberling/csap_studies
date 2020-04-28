@@ -909,7 +909,7 @@ season_rasters <- seamap_west %>%
   mutate(lon_bin = round(start_long, 1),
          lat_bin = round(start_lat, 1)) %>% 
   split(.$season) %>% 
-  map(function(x) {
+  imap(function(x, y) {
   
     #Aggregating the seamap data into bins
     seamap_sf_agg <- x %>% 
@@ -958,7 +958,7 @@ season_rasters <- seamap_west %>%
           nx = length(num_x),
           ny = length(num_y))
       )
-    
+  
     
     ####  Sampling Effort  ####
     effort_ras <- st_rasterize(
@@ -970,6 +970,37 @@ season_rasters <- seamap_west %>%
           nx = length(num_x),
           ny = length(num_y))
       )
+    
+    
+    # # Save them out
+    #
+    # # Catch
+    #
+    # stars::write_stars(
+    #   obj = catch_ras, 
+    #   dsn = here("seamap_analyses", str_c(y,"_total_catch.tif"))
+    # )
+    #
+    # # CPUE
+    #
+    # stars::write_stars(
+    #   obj = cpue_ras, 
+    #   dsn = here("seamap_analyses", str_c(y, "_cpue_hectares.tif"))
+    # )
+    #
+    # # Variance
+    #
+    # stars::write_stars(
+    #   obj = variance_ras, 
+    #   dsn = here("seamap_analyses", str_c(y,"_cpue_var_hectares.tif"))
+    # )
+    #
+    # # Effort
+    #
+    # stars::write_stars(
+    #   obj = effort_ras, 
+    #   dsn = here("seamap_analyses", str_c(y, "_station_effort.tif"))
+    # )
     
     
     ####  Output List  ####
@@ -1437,6 +1468,34 @@ ggplot() +
     pad_y = unit(0, "in"),
     style = north_arrow_fancy_orienteering) +
   annotation_scale(pad_x = unit(4.25, "in")) # West
+
+
+#Variance plot
+ggplot() +
+  geom_tile(data = season_rasters$Summer$agg_data, 
+            aes(x = lon_bin, y = lat_bin, fill = cpue_variance), 
+            color = "white", size = 0.05) +
+  geom_sf(data = usmap) +
+  geom_sf(data = mex) +
+  scale_fill_distiller(palette = "Spectral", na.value = "transparent") +
+  coord_sf(xlim = c(-98, -87.95), ylim = c(25.75, 31), datum = NA) +
+  scale_y_continuous() +
+  labs(x = NULL, y = NULL) +
+  guides(fill = guide_colorbar(title = "CPUE Variance - Summer",
+                               title.hjust = 0.5, 
+                               title.position = "top",
+                               barwidth = 10)) +
+  theme(legend.position = "bottom", 
+        legend.text = element_text(size  = 12), 
+        legend.title = element_text(size = 12)) +
+  annotation_north_arrow(
+    height = unit(0.4, "in"),
+    location = "bl", 
+    which_north = "true", 
+    pad_x = unit(5.85, "in"), 
+    pad_y = unit(0, "in"),
+    style = north_arrow_fancy_orienteering) +
+  annotation_scale(pad_x = unit(4.25, "in")) # West
 ```
 
 
@@ -1446,8 +1505,8 @@ ggplot() +
 
 ```{r}
 # #summer stations only
-# summer_sf <- seamap_west %>% 
-#   filter(season == "Summer") %>% 
+# summer_sf <- seamap_west %>%
+#   filter(season == "Summer") %>%
 #   st_as_sf(coords = c("start_long", "start_lat"), crs = 4326, remove = FALSE)
 # 
 # 
@@ -1483,11 +1542,21 @@ ggplot() +
 # # Now create a depth mask for < 60fm
 # bathy_test <- bathy_crop
 # bathy_test[bathy_crop < (-60 * 1.8288)] <- NA
-# plot(bathy_test, main = "Depths <= 60 fathoms")
+# raster::plot(bathy_test, main = "Depths <= 60 fathoms")
+# 
+# 
+# #Save the raster and the hull for Zack - local because dropbox is full
+# st_write(summer_hull_sf, dsn = here("seamap_analyses/summer_analysis_hull.shp"))
+# raster::writeRaster(bathy_test, 
+#                     filename = here("seamap_analyses/summer_analysis_60fm_hull.tif"))
+
+# #Load the pre-processed forms
+# summer_hull_sf <- st_read(here("seamap_analyses/summer_analysis_hull.shp"))
+# bathy_test <- raster::raster(here("seamap_analyses/summer_analysis_60fm_hull.tif"))
 # 
 # 
 # ####  Get area from raster  ####\#get sizes of all cells in raster [km2]
-# cell_size <- raster::area(bathy_test, na.rm=TRUE, weights=FALSE)
+# cell_size <- raster::area(bathy_test, na.rm = TRUE, weights = FALSE)
 # 
 # #delete NAs from vector of all raster cells
 # ##NAs lie outside of the rastered region, can thus be omitted
@@ -1495,15 +1564,17 @@ ggplot() +
 # 
 # #compute area [km2] of all cells in geo_raster
 # raster_area <- length(cell_size) * median(cell_size)
-# raster_area <- round(raster_area, digits = 1)
+# raster_area_km <- round(raster_area, digits = 1)
+# raster_area_hc <- round(raster_area * 100, digits = 1)
 
 # Pre-processing determined raster area to be
-raster_area <- 122297.8 #square kilometers
+raster_area_km <- 122297.8 #square kilometers
+raster_area_hc <- 12229780
 
 # Print area of Study Area according to raster object
-print(paste("Area of Analysis Data Study Area (raster):", raster_area,"km2"))
+print(paste("Area of Analysis Data Study Area (raster):", raster_area_km, " km2"))
 
-print(paste("Area of Analysis Data Study Area (raster):", raster_area * 100, "Hectares"))
+print(paste("Area of Analysis Data Study Area (raster):", raster_area_hc, " Hectares"))
 
 
 # If we want to use the polygon area instead, should use an equal area projection
