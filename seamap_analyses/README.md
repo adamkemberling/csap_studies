@@ -65,7 +65,7 @@ found here:
 
 ## Reproductive Analyses
 
-Final nalyses added to the manuscript can be found here:
+Final analyses added to the manuscript can be found here:
 
   - `seamap_analyses/reproductive_analyses/R/egg_models_2.Rmd`
 
