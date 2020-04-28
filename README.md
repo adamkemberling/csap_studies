@@ -28,7 +28,7 @@ organizations. This includes fecundity estimates as well as offshore
 population estimates.
 
 **[Branch 1:
-Mark-Recapture]https://github.com/adamkemberling/csap_studies/tree/master/tagging_analyses)**
+Mark-Recapture](https://github.com/adamkemberling/csap_studies/tree/master/tagging_analyses)**
 
 **[Branch 2: Offshore
 Analyses](https://github.com/adamkemberling/csap_studies/tree/master/seamap_analyses)**
